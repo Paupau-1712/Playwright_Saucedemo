@@ -31,4 +31,7 @@ tables for the longest-running tests, failures, and errors. Status mapping: **Fa
 or test failure, **Error** is a timeout or interrupted run, **Cancelled** is a skipped test.
 
 Run history is kept in `dashboard/history.json` (last 200 runs), so charts build up locally over time.
-In CI each run starts clean, so the downloaded `dashboard` artifact reflects that single run.
+
+On `main`, CI publishes the dashboard to GitHub Pages
+(https://paupau-1712.github.io/Playwright_Saucedemo/). Before each run it downloads the previously
+published `history.json`, so the charts keep accumulating across pushes and nightly runs.
