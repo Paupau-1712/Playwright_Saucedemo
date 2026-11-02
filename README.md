@@ -15,10 +15,20 @@ npx playwright install chromium
 ```sh
 npm test            # headless
 npm run test:headed # watch the browser
-npm run report      # open the HTML report
+npm run report      # open the standard Playwright HTML report
+npm run dashboard   # open the dashboard report (macOS)
 ```
 
 ## Layout
 
 - `pages/` — page objects (`LoginPage`, `InventoryPage`)
 - `tests/` — login, inventory, and checkout specs
+
+## Dashboard report
+
+Every run writes `dashboard/index.html`: summary cards, runs per day, status breakdown, and top-10
+tables for the longest-running tests, failures, and errors. Status mapping: **Fail** is an assertion
+or test failure, **Error** is a timeout or interrupted run, **Cancelled** is a skipped test.
+
+Run history is kept in `dashboard/history.json` (last 200 runs), so charts build up locally over time.
+In CI each run starts clean, so the downloaded `dashboard` artifact reflects that single run.
