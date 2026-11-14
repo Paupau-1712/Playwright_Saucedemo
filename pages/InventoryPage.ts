@@ -6,6 +6,7 @@ export class InventoryPage {
   readonly cartBadge: Locator;
   readonly cartLink: Locator;
   readonly sortSelect: Locator;
+  readonly checkoutButton: Locator;
 
   constructor(private readonly page: Page) {
     this.title = page.locator('[data-test="title"]');
@@ -13,6 +14,7 @@ export class InventoryPage {
     this.cartBadge = page.locator('[data-test="shopping-cart-badge"]');
     this.cartLink = page.locator('[data-test="shopping-cart-link"]');
     this.sortSelect = page.locator('[data-test="product-sort-container"]');
+    this.checkoutButton = page.locator('[data-test="checkout"]');
   }
 
   async expectLoaded() {
@@ -30,5 +32,9 @@ export class InventoryPage {
   async prices(): Promise<number[]> {
     const texts = await this.page.locator('[data-test="inventory-item-price"]').allTextContents();
     return texts.map((t) => Number(t.replace('$', '')));
+  }
+
+  async clickCheckout() {
+    await this.checkoutButton.click();
   }
 }

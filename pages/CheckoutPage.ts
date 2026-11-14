@@ -15,6 +15,7 @@ export class CheckoutPage {
   readonly completeHeader: Locator;
   readonly completeText: Locator;
   readonly backHomeButton: Locator;
+  
 
   constructor(page: Page) {
     this.title = page.locator('[data-test="title"]');

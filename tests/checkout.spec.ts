@@ -17,8 +17,9 @@ test('completes a purchase end to end', async ({ page }) => {
   await expect(
     page.locator('[data-test="cart-list"] [data-test="inventory-item-name"]'),
   ).toHaveText('Sauce Labs Backpack');
+  await inventory.clickCheckout();
 
-  await page.locator('[data-test="checkout"]').click();
+  
   const checkout = new CheckoutPage(page);
   await checkout.firstName.fill('Test');
   await checkout.lastName.fill('User');
