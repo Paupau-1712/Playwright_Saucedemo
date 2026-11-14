@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { FullResult, Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 
 type Status = 'passed' | 'failed' | 'error' | 'cancelled';
@@ -9,6 +10,12 @@ interface TestRecord {
   suite: string;
   status: Status;
   duration: number;
+  screenshots: ScreenshotRecord[];
+}
+
+interface ScreenshotRecord {
+  name: string;
+  path: string;
 }
 
 interface RunRecord {
@@ -46,8 +53,16 @@ const formatMs = (ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `
 
 class DashboardReporter implements Reporter {
   private readonly outDir: string;
-  private readonly latest = new Map<string, TestRecord>();
+  private readonly latest = new Map<
+    string,
+    {
+      testId: string;
+      record: Omit<TestRecord, 'screenshots'>;
+      attachments: TestResult['attachments'];
+    }
+  >();
   private startedAt = Date.now();
+  private runId = '';
 
   constructor(options: { outputFolder?: string } = {}) {
     this.outDir = path.resolve(options.outputFolder ?? 'dashboard');
@@ -55,15 +70,20 @@ class DashboardReporter implements Reporter {
 
   onBegin() {
     this.startedAt = Date.now();
+    this.runId = `${Date.now()}-${randomUUID()}`;
   }
 
   onTestEnd(test: TestCase, result: TestResult) {
     // Later attempts overwrite earlier ones so retries count once, by final outcome.
     this.latest.set(test.id, {
-      title: test.titlePath().slice(3).join(' › '),
-      suite: path.basename(test.location.file).replace(/\.spec\.\w+$/, ''),
-      status: classify(result),
-      duration: result.duration,
+      testId: test.id,
+      record: {
+        title: test.titlePath().slice(3).join(' › '),
+        suite: path.basename(test.location.file).replace(/\.spec\.\w+$/, ''),
+        status: classify(result),
+        duration: result.duration,
+      },
+      attachments: result.attachments,
     });
   }
 
@@ -79,12 +99,47 @@ class DashboardReporter implements Reporter {
     history.push({
       date: new Date().toISOString(),
       duration: Date.now() - this.startedAt,
-      tests: [...this.latest.values()],
+      tests: [...this.latest.values()].map(({ testId, record, attachments }) => ({
+        ...record,
+        screenshots: this.saveScreenshots(testId, attachments),
+      })),
     });
     history = history.slice(-MAX_RUNS);
     fs.writeFileSync(historyFile, JSON.stringify(history));
     fs.writeFileSync(path.join(this.outDir, 'index.html'), render(history));
     console.log(`Dashboard: ${path.join(this.outDir, 'index.html')}`);
+  }
+
+  private saveScreenshots(
+    testId: string,
+    attachments: TestResult['attachments'],
+  ): ScreenshotRecord[] {
+    const screenshotAttachments = attachments.filter(
+      (attachment) =>
+        attachment.name.startsWith('step-screenshot-') && attachment.contentType === 'image/png',
+    );
+    if (!screenshotAttachments.length) return [];
+
+    const runDirectory = path.join(this.outDir, 'screenshots', this.runId);
+    fs.mkdirSync(runDirectory, { recursive: true });
+    const safeTestId = testId.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 100);
+
+    return screenshotAttachments.map((attachment, index) => {
+      const filename = `${safeTestId}-${index + 1}.png`;
+      const destination = path.join(runDirectory, filename);
+      if (attachment.body) {
+        fs.writeFileSync(destination, attachment.body);
+      } else if (attachment.path) {
+        fs.copyFileSync(attachment.path, destination);
+      } else {
+        throw new Error(`Screenshot attachment "${attachment.name}" has no content`);
+      }
+
+      return {
+        name: attachment.name,
+        path: path.posix.join('screenshots', this.runId, filename),
+      };
+    });
   }
 }
 
@@ -106,7 +161,6 @@ function render(history: RunRecord[]): string {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Test case dashboard</title><style>${STYLE}</style></head>
 <body>
-${sidebar()}
 <main>
   <header class="panel head">
     <h1>Test case dashboard</h1>
@@ -114,6 +168,7 @@ ${sidebar()}
     <span class="chip">${esc(dayKey(start))}</span><span class="to">to</span><span class="chip">${esc(dayKey(end))}</span>
     <span class="chip">Sauce Demo · Chromium</span>
   </header>
+  <section class="panel"><div class="ph"><h2>Recent test runs and step screenshots</h2></div>${runsTable(runs)}</section>
   <section class="cards">
     ${card('Test cases completed', String(total), '#555')}
     ${card('Total execution time', formatDuration(totalTime), '#555')}
@@ -133,6 +188,46 @@ ${sidebar()}
     <div class="panel half"><div class="ph"><h2>Top 10 test case errors</h2></div>${rankedTable(all, 'error', 'Total errors', '▲')}</div>
   </section>
 </main></body></html>`;
+}
+
+function runsTable(runs: RunRecord[]) {
+  if (!runs.length) return empty();
+
+  return runs
+    .slice()
+    .reverse()
+    .map((run) => {
+      const runLabel = `${new Date(run.date).toLocaleString()} · ${run.tests.length} test cases · ${formatDuration(run.duration)}`;
+      const tests = run.tests
+        .map((test) => {
+          const screenshots = test.screenshots?.length
+            ? `<div class="screenshots">${test.screenshots
+                .map(
+                  (screenshot) =>
+                    `<figure><a href="${esc(screenshot.path)}" target="_blank" rel="noopener"><img src="${esc(screenshot.path)}" loading="lazy" alt="${esc(screenshot.name)}"></a><figcaption>${esc(screenshot.name.replace(/^step-screenshot-\d+-/, '').replace(/-/g, ' '))}</figcaption></figure>`,
+                )
+                .join('')}</div>`
+            : empty('No step screenshots were captured for this test.');
+          return `<details class="test-capture"><summary><span class="badge ${statusClass(test.status)}"><b>${statusIcon(test.status)}</b>${esc(test.status)}</span> ${esc(test.suite)} · ${esc(test.title)}</summary>${screenshots}</details>`;
+        })
+        .join('');
+      return `<details class="run-capture"><summary>${esc(runLabel)}</summary>${tests || empty()}</details>`;
+    })
+    .join('');
+}
+
+function statusClass(status: Status) {
+  return status === 'passed'
+    ? 'b-pass'
+    : status === 'failed'
+      ? 'b-fail'
+      : status === 'error'
+        ? 'b-err'
+        : 'b-can';
+}
+
+function statusIcon(status: Status) {
+  return status === 'passed' ? '✓' : status === 'failed' ? '!' : status === 'error' ? '▲' : '×';
 }
 
 function card(label: string, value: string, color: string) {
@@ -247,17 +342,9 @@ function rankedTable(all: TestRecord[], status: Status, header: string, icon: st
 
 const empty = (msg = 'No test data yet') => `<p class="empty">${msg}</p>`;
 
-function sidebar() {
-  const item = (l: string, active = false) => `<div class="nav${active ? ' on' : ''}">${l}</div>`;
-  return `<aside><div class="logo">🍆 saucedemo</div>${item('Dashboards')}<div class="sub on">Test Case</div><div class="sub">Suite</div>${item('Designer')}${item('Controller')}${item('Insights')}<div class="spacer"></div>${item('System')}${item('Documentation')}${item('Log Out')}</aside>`;
-}
-
 const STYLE = `
-*{box-sizing:border-box}body{margin:0;display:flex;font:13px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;background:#f1f1f3;color:#2b2b33}
-aside{width:104px;min-height:100vh;background:#3b2a5c;color:#fff;padding:12px 8px;display:flex;flex-direction:column;gap:4px;font-size:11px;position:sticky;top:0;height:100vh}
-.logo{font-weight:700;font-size:12px;margin-bottom:14px;text-align:center}.nav{padding:8px 6px;border-radius:4px}.nav.on{background:#6b4fbb}
-.sub{padding:4px 6px 4px 14px;opacity:.8}.sub.on{opacity:1;font-weight:600}.spacer{flex:1}
-main{flex:1;padding:14px;max-width:1400px;margin:0 auto}
+*{box-sizing:border-box}body{margin:0;font:13px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;background:#f1f1f3;color:#2b2b33}
+main{padding:14px;max-width:1400px;margin:0 auto}
 .panel{background:#fff;border:1px solid #e3e3e8;border-radius:6px;padding:12px 14px;margin-bottom:14px}
 .head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.head h1{font-size:15px;margin:0 12px 0 0}
 .chip{border:1px solid #d8d8df;border-radius:4px;padding:5px 10px;background:#fff}.to{color:#888}
@@ -280,7 +367,17 @@ th,td{padding:7px 8px;border-bottom:1px solid #eee}
 .b-err{border-color:#f5a300}.b-err b{background:#f5a300}.b-can{border-color:#aaa}.b-can b{background:#aaa}
 .suite{background:#f1f1f3;border:1px solid #ddd;border-radius:4px;padding:2px 8px;white-space:nowrap}
 .empty{color:#888;text-align:center;padding:28px 0}
-@media(max-width:900px){.row{flex-direction:column}.cards{grid-template-columns:repeat(2,1fr)}aside{display:none}}
+.run-capture,.test-capture{border:1px solid #e3e3e8;border-radius:4px;margin:8px 0;background:#fff}
+.run-capture>summary,.test-capture>summary{cursor:pointer;padding:9px 10px}
+.run-capture>summary{font-weight:600;background:#fafafa}
+.test-capture{margin:8px 10px}
+.screenshots{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;padding:10px}
+.screenshots figure{margin:0;min-width:0}
+.screenshots img{display:block;width:100%;height:auto;max-height:420px;object-fit:contain;object-position:top;border:1px solid #ddd;border-radius:4px;background:#f8f8f8}
+.screenshots figcaption{padding:5px 2px;color:#555}
+@media(max-width:900px){.row{flex-direction:column}.cards{grid-template-columns:repeat(2,1fr)}}
 `;
+
+
 
 export default DashboardReporter;

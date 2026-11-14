@@ -1,32 +1,41 @@
 import { test, expect } from '@playwright/test';
 import { LoginPage, users } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
+import { captureStep } from './helpers/captureStep';
 
 test.describe('Inventory', () => {
   let inventory: InventoryPage;
 
   test.beforeEach(async ({ page }) => {
     const login = new LoginPage(page);
-    await login.goto();
-    await login.loginUsername(users.standard);
-    await login.loginPassword(users.password);
-    await login.clickLogin();
-    inventory = new InventoryPage(page);
-    await inventory.expectLoaded();
+    await captureStep(page, 'Open the login page', () => login.goto());
+    await captureStep(page, 'Enter the username', () => login.loginUsername(users.standard));
+    await captureStep(page, 'Enter the password', () => login.loginPassword(users.password));
+    await captureStep(page, 'Log in and verify the inventory page', async () => {
+      await login.clickLogin();
+      inventory = new InventoryPage(page);
+      await inventory.expectLoaded();
+    });
   });
 
-  test('lists six products', async () => {
-    await expect(inventory.items).toHaveCount(6);
+  test('lists six products', async ({ page }) => {
+    await captureStep(page, 'Verify six products are listed', () => expect(inventory.items).toHaveCount(6));
   });
 
-  test('adding a product updates the cart badge', async () => {
-    await inventory.addToCart('Sauce Labs Backpack');
-    await expect(inventory.cartBadge).toHaveText('1');
+  test('adding a product updates the cart badge', async ({ page }) => {
+    await captureStep(page, 'Add the backpack to the cart', () =>
+      inventory.addToCart('Sauce Labs Backpack'),
+    );
+    await captureStep(page, 'Verify the cart badge', () => expect(inventory.cartBadge).toHaveText('1'));
   });
 
-  test('sorts products by price low to high', async () => {
-    await inventory.sortSelect.selectOption('lohi');
-    const prices = await inventory.prices();
-    expect(prices).toEqual([...prices].sort((a, b) => a - b));
+  test('sorts products by price low to high', async ({ page }) => {
+    await captureStep(page, 'Sort products by price from low to high', () =>
+      inventory.sortSelect.selectOption('lohi'),
+    );
+    await captureStep(page, 'Verify prices are in ascending order', async () => {
+      const prices = await inventory.prices();
+      expect(prices).toEqual([...prices].sort((a, b) => a - b));
+    });
   });
 });

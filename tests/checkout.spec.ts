@@ -2,30 +2,40 @@ import { test, expect } from '@playwright/test';
 import { LoginPage, users } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
+import { captureStep } from './helpers/captureStep';
 
 test('completes a purchase end to end', async ({ page }) => {
   const login = new LoginPage(page);
-  await login.goto();
-  await login.loginUsername(users.standard);
-  await login.loginPassword(users.password);
-  await login.clickLogin();
+  await captureStep(page, 'Open the login page', () => login.goto());
+  await captureStep(page, 'Enter the username', () => login.loginUsername(users.standard));
+  await captureStep(page, 'Enter the password', () => login.loginPassword(users.password));
+  await captureStep(page, 'Log in and verify the inventory page', async () => {
+    await login.clickLogin();
+    await new InventoryPage(page).expectLoaded();
+  });
 
   const inventory = new InventoryPage(page);
-  await inventory.addToCart('Sauce Labs Backpack');
-  await inventory.cartLink.click();
-  await expect(page).toHaveURL(/cart\.html/);
-  await expect(
-    page.locator('[data-test="cart-list"] [data-test="inventory-item-name"]'),
-  ).toHaveText('Sauce Labs Backpack');
-  await inventory.clickCheckout();
+  await captureStep(page, 'Add the backpack to the cart', () =>
+    inventory.addToCart('Sauce Labs Backpack'),
+  );
+  await captureStep(page, 'Open the cart and verify the item', async () => {
+    await inventory.cartLink.click();
+    await expect(page).toHaveURL(/cart\.html/);
+    await expect(
+      page.locator('[data-test="cart-list"] [data-test="inventory-item-name"]'),
+    ).toHaveText('Sauce Labs Backpack');
+  });
+  await captureStep(page, 'Start checkout', () => inventory.clickCheckout());
 
-  
   const checkout = new CheckoutPage(page);
-  await checkout.firstName.fill('Test');
-  await checkout.lastName.fill('User');
-  await checkout.postalCode.fill('12345');
-  await checkout.continueButton.click();
-  await checkout.finishButton.click();
-
-  await expect(checkout.completeHeader).toHaveText('Thank you for your order!');
+  await captureStep(page, 'Enter checkout information', async () => {
+    await checkout.firstName.fill('Test');
+    await checkout.lastName.fill('User');
+    await checkout.postalCode.fill('12345');
+  });
+  await captureStep(page, 'Continue to the order overview', () => checkout.continueButton.click());
+  await captureStep(page, 'Finish the order and verify confirmation', async () => {
+    await checkout.finishButton.click();
+    await expect(checkout.completeHeader).toHaveText('Thank you for your order!');
+  });
 });

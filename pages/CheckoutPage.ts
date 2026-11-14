@@ -31,6 +31,6 @@ export class CheckoutPage {
     this.total = page.locator('[data-test="total-label"]');
     this.completeHeader = page.locator('[data-test="complete-header"]');
     this.completeText = page.locator('[data-test="complete-text"]');
-    this.backHomeButton = page.locator('[data-test="back-to-products"]');
+    this.backHomeButton = page.locator('[data-test="back-to-products"]'); 
   }
 }
