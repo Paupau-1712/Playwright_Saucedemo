@@ -1,0 +1,11 @@
+{
+  "title": "//*[@data-test='title']",
+  "items": "//*[@data-test='inventory-item']",
+  "itemName": "//*[@data-test='inventory-item-name']",
+  "itemPrices": "//*[@data-test='inventory-item-price']",
+  "addToCartButton": "//*[@data-test='inventory-item'][.//*[@data-test='inventory-item-name' and normalize-space(.)='{productName}']]//button[starts-with(@data-test, 'add-to-cart-')]",
+  "cartBadge": "//*[@data-test='shopping-cart-badge']",
+  "cartLink": "//*[@data-test='shopping-cart-link']",
+  "sortSelect": "//*[@data-test='product-sort-container']",
+  "checkoutButton": "//*[@data-test='checkout']"
+}

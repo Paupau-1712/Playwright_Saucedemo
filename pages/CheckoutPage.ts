@@ -1,36 +1,32 @@
-import { type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
+import * as locators from './pagelocators/CheckoutPage.json';
 
 export class CheckoutPage {
-  readonly title: Locator;
-  readonly firstName: Locator;
-  readonly lastName: Locator;
-  readonly postalCode: Locator;
-  readonly continueButton: Locator;
-  readonly cancelButton: Locator;
-  readonly finishButton: Locator;
-  readonly items: Locator;
-  readonly subtotal: Locator;
-  readonly tax: Locator;
-  readonly total: Locator;
-  readonly completeHeader: Locator;
-  readonly completeText: Locator;
-  readonly backHomeButton: Locator;
-  
+  constructor(private readonly page: Page) {}
 
-  constructor(page: Page) {
-    this.title = page.locator('[data-test="title"]');
-    this.firstName = page.locator('[data-test="firstName"]');
-    this.lastName = page.locator('[data-test="lastName"]');
-    this.postalCode = page.locator('[data-test="postalCode"]');
-    this.continueButton = page.locator('[data-test="continue"]');
-    this.cancelButton = page.locator('[data-test="cancel"]');
-    this.finishButton = page.locator('[data-test="finish"]');
-    this.items = page.locator('[data-test="cart-list"] [data-test="inventory-item"]');
-    this.subtotal = page.locator('[data-test="subtotal-label"]');
-    this.tax = page.locator('[data-test="tax-label"]');
-    this.total = page.locator('[data-test="total-label"]');
-    this.completeHeader = page.locator('[data-test="complete-header"]');
-    this.completeText = page.locator('[data-test="complete-text"]');
-    this.backHomeButton = page.locator('[data-test="back-to-products"]'); 
+  private loc(name: keyof typeof locators): Locator {
+    return this.page.locator(locators[name]);
+  }
+
+  async expectCartItem(productName: string): Promise<void> {
+    await expect(this.loc('cartItemName')).toHaveText(productName);
+  }
+
+  async enterInformation(firstName: string, lastName: string, postalCode: string): Promise<void> {
+    await this.loc('firstName').fill(firstName);
+    await this.loc('lastName').fill(lastName);
+    await this.loc('postalCode').fill(postalCode);
+  }
+
+  async continueToOverview(): Promise<void> {
+    await this.loc('continueButton').click();
+  }
+
+  async finishOrder(): Promise<void> {
+    await this.loc('finishButton').click();
+  }
+
+  async expectOrderComplete(): Promise<void> {
+    await expect(this.loc('completeHeader')).toHaveText('Thank you for your order!');
   }
 }

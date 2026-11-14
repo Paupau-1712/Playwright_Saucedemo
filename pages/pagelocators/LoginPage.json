@@ -1,0 +1,6 @@
+{
+  "username": "//input[@placeholder='Username']",
+  "password": "//input[@placeholder='Password']",
+  "loginButton": "//input[@type='submit' and @value='Login']",
+  "error": "//*[@data-test='error']"
+}

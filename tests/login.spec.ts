@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { LoginPage, users } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
-import { captureStep } from './helpers/captureStep';
+import { captureStep } from '../utilities/screenShots/captureStep';
 
 test.describe('Login', () => {
   test('standard user can log in', async ({ page }) => {
@@ -41,7 +41,7 @@ test.describe('Login', () => {
     const login = new LoginPage(page);
     await captureStep(page, 'Open the login page', () => login.goto());
     await captureStep(page, 'Submit without a username', async () => {
-      await login.loginButton.click();
+      await login.clickLogin();
       await login.expectError('Username is required');
     });
   });

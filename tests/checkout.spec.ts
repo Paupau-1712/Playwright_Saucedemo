@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { LoginPage, users } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
-import { captureStep } from './helpers/captureStep';
+import { captureStep } from '../utilities/screenShots/captureStep';
 
 test('completes a purchase end to end', async ({ page }) => {
   const login = new LoginPage(page);
@@ -19,23 +19,19 @@ test('completes a purchase end to end', async ({ page }) => {
     inventory.addToCart('Sauce Labs Backpack'),
   );
   await captureStep(page, 'Open the cart and verify the item', async () => {
-    await inventory.cartLink.click();
+    await inventory.openCart();
     await expect(page).toHaveURL(/cart\.html/);
-    await expect(
-      page.locator('[data-test="cart-list"] [data-test="inventory-item-name"]'),
-    ).toHaveText('Sauce Labs Backpack');
+    await new CheckoutPage(page).expectCartItem('Sauce Labs Backpack');
   });
   await captureStep(page, 'Start checkout', () => inventory.clickCheckout());
 
   const checkout = new CheckoutPage(page);
-  await captureStep(page, 'Enter checkout information', async () => {
-    await checkout.firstName.fill('Test');
-    await checkout.lastName.fill('User');
-    await checkout.postalCode.fill('12345');
-  });
-  await captureStep(page, 'Continue to the order overview', () => checkout.continueButton.click());
+  await captureStep(page, 'Enter checkout information', () =>
+    checkout.enterInformation('Test', 'User', '12345'),
+  );
+  await captureStep(page, 'Continue to the order overview', () => checkout.continueToOverview());
   await captureStep(page, 'Finish the order and verify confirmation', async () => {
-    await checkout.finishButton.click();
-    await expect(checkout.completeHeader).toHaveText('Thank you for your order!');
+    await checkout.finishOrder();
+    await checkout.expectOrderComplete();
   });
 });

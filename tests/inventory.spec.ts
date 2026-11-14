@@ -1,7 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import { LoginPage, users } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
-import { captureStep } from './helpers/captureStep';
+import { captureStep } from '../utilities/screenShots/captureStep';
 
 test.describe('Inventory', () => {
   let inventory: InventoryPage;
@@ -19,23 +19,22 @@ test.describe('Inventory', () => {
   });
 
   test('lists six products', async ({ page }) => {
-    await captureStep(page, 'Verify six products are listed', () => expect(inventory.items).toHaveCount(6));
+    await captureStep(page, 'Verify six products are listed', () => inventory.expectItemCount(6));
   });
 
   test('adding a product updates the cart badge', async ({ page }) => {
     await captureStep(page, 'Add the backpack to the cart', () =>
       inventory.addToCart('Sauce Labs Backpack'),
     );
-    await captureStep(page, 'Verify the cart badge', () => expect(inventory.cartBadge).toHaveText('1'));
+    await captureStep(page, 'Verify the cart badge', () => inventory.expectCartBadge(1));
   });
 
   test('sorts products by price low to high', async ({ page }) => {
     await captureStep(page, 'Sort products by price from low to high', () =>
-      inventory.sortSelect.selectOption('lohi'),
+      inventory.sortByPriceLowToHigh(),
     );
-    await captureStep(page, 'Verify prices are in ascending order', async () => {
-      const prices = await inventory.prices();
-      expect(prices).toEqual([...prices].sort((a, b) => a - b));
-    });
+    await captureStep(page, 'Verify prices are in ascending order', () =>
+      inventory.expectPricesAscending(),
+    );
   });
 });

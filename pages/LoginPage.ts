@@ -1,4 +1,5 @@
 import { type Page, type Locator, expect } from '@playwright/test';
+import * as locators from './pagelocators/LoginPage.json';
 
 // Public demo credentials published on the Sauce Demo login page.
 export const users = {
@@ -8,16 +9,10 @@ export const users = {
 };
 
 export class LoginPage {
-  readonly username: Locator;
-  readonly password: Locator;
-  readonly loginButton: Locator;
-  readonly error: Locator;
+  constructor(private readonly page: Page) {}
 
-  constructor(private readonly page: Page) {
-    this.username = page.getByPlaceholder('Username');
-    this.password = page.getByPlaceholder('Password');
-    this.loginButton = page.getByRole('button', { name: 'Login' });
-    this.error = page.locator('[data-test="error"]');
+  private loc(name: keyof typeof locators): Locator {
+    return this.page.locator(locators[name]);
   }
 
   async goto() {
@@ -25,18 +20,18 @@ export class LoginPage {
   }
 
   async loginUsername(username: string) {
-    await this.username.fill(username);
+    await this.loc('username').fill(username);
   }
 
   async loginPassword(password: string) {
-    await this.password.fill(password);
+    await this.loc('password').fill(password);
   }
 
   async clickLogin() {
-    await this.loginButton.click();
+    await this.loc('loginButton').click();
   }
 
   async expectError(message: string | RegExp) {
-    await expect(this.error).toContainText(message);
+    await expect(this.loc('error')).toContainText(message);
   }
 }

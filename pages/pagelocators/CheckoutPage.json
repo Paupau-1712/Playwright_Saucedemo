@@ -1,0 +1,17 @@
+{
+  "title": "//*[@data-test='title']",
+  "firstName": "//*[@data-test='firstName']",
+  "lastName": "//*[@data-test='lastName']",
+  "postalCode": "//*[@data-test='postalCode']",
+  "continueButton": "//*[@data-test='continue']",
+  "cancelButton": "//*[@data-test='cancel']",
+  "finishButton": "//*[@data-test='finish']",
+  "items": "//*[@data-test='cart-list']//*[@data-test='inventory-item']",
+  "cartItemName": "//*[@data-test='cart-list']//*[@data-test='inventory-item-name']",
+  "subtotal": "//*[@data-test='subtotal-label']",
+  "tax": "//*[@data-test='tax-label']",
+  "total": "//*[@data-test='total-label']",
+  "completeHeader": "//*[@data-test='complete-header']",
+  "completeText": "//*[@data-test='complete-text']",
+  "backHomeButton": "//*[@data-test='back-to-products']"
+}
