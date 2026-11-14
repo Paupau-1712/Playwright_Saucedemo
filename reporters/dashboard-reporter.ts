@@ -25,7 +25,6 @@ interface RunRecord {
 }
 
 const MAX_RUNS = 200;
-const DAYS = 7;
 const COLORS = { passed: '#2fa84f', failed: '#c8102e', error: '#f5a300', cancelled: '#c9c9c9' };
 
 function classify(result: TestResult): Status {
@@ -144,49 +143,20 @@ class DashboardReporter implements Reporter {
 }
 
 function render(history: RunRecord[]): string {
-  const end = new Date();
-  const start = new Date(end);
-  start.setDate(end.getDate() - (DAYS - 1));
-  start.setHours(0, 0, 0, 0);
-  const runs = history.filter((r) => new Date(r.date) >= start);
-  const all = runs.flatMap((r) => r.tests);
-
-  const count = (s: Status) => all.filter((t) => t.status === s).length;
-  const counts = { passed: count('passed'), failed: count('failed'), error: count('error'), cancelled: count('cancelled') };
-  const total = all.length;
-  const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
-  const totalTime = runs.reduce((sum, r) => sum + r.duration, 0);
+  const today = dayKey(new Date());
+  const runs = history.filter((run) => dayKey(new Date(run.date)) === today);
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Test case dashboard</title><style>${STYLE}</style></head>
+<title>Today's test runs</title><style>${STYLE}</style></head>
 <body>
 <main>
   <header class="panel head">
-    <h1>Test case dashboard</h1>
-    <span class="chip">Last ${DAYS} days</span>
-    <span class="chip">${esc(dayKey(start))}</span><span class="to">to</span><span class="chip">${esc(dayKey(end))}</span>
+    <h1>Today's test runs</h1>
+    <span class="chip">${esc(today)}</span>
     <span class="chip">Sauce Demo · Chromium</span>
   </header>
-  <section class="panel"><div class="ph"><h2>Recent test runs and step screenshots</h2></div>${runsTable(runs)}</section>
-  <section class="cards">
-    ${card('Test cases completed', String(total), '#555')}
-    ${card('Total execution time', formatDuration(totalTime), '#555')}
-    ${card('Passed', `${pct(counts.passed)}%`, COLORS.passed)}
-    ${card('Failed', `${pct(counts.failed)}%`, COLORS.failed)}
-    ${card('Error', `${pct(counts.error)}%`, COLORS.error)}
-    ${card('Cancelled', `${pct(counts.cancelled)}%`, COLORS.cancelled)}
-    ${card('Runs', String(runs.length), '#6b4fbb')}
-  </section>
-  <section class="panel"><div class="ph"><h2>Test case runs per day</h2></div>${lineChart(runs, start)}${legend()}</section>
-  <section class="row">
-    <div class="panel half"><div class="ph"><h2>Test case results by status</h2></div>${donut(counts, total)}${legend()}${statusTable(counts, pct)}</div>
-    <div class="panel half"><div class="ph"><h2>Top 10 longest running test cases</h2></div>${longestTable(all)}</div>
-  </section>
-  <section class="row">
-    <div class="panel half"><div class="ph"><h2>Top 10 test case failures</h2></div>${rankedTable(all, 'failed', 'Total failures', '!')}</div>
-    <div class="panel half"><div class="ph"><h2>Top 10 test case errors</h2></div>${rankedTable(all, 'error', 'Total errors', '▲')}</div>
-  </section>
+  <section class="panel"><div class="ph"><h2>Test case runs today</h2></div>${runsTable(runs)}</section>
 </main></body></html>`;
 }
 
