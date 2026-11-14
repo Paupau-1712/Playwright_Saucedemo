@@ -145,18 +145,47 @@ class DashboardReporter implements Reporter {
 function render(history: RunRecord[]): string {
   const today = dayKey(new Date());
   const runs = history.filter((run) => dayKey(new Date(run.date)) === today);
+  const all = runs.flatMap((run) => run.tests);
+  const count = (status: Status) => all.filter((test) => test.status === status).length;
+  const counts = {
+    passed: count('passed'),
+    failed: count('failed'),
+    error: count('error'),
+    cancelled: count('cancelled'),
+  };
+  const total = all.length;
+  const pct = (value: number) => (total ? Math.round((value / total) * 100) : 0);
+  const totalTime = runs.reduce((sum, run) => sum + run.duration, 0);
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Today's test runs</title><style>${STYLE}</style></head>
+<title>Today's test analytics</title><style>${STYLE}</style></head>
 <body>
 <main>
   <header class="panel head">
-    <h1>Today's test runs</h1>
+    <h1>Today's test analytics</h1>
     <span class="chip">${esc(today)}</span>
     <span class="chip">Sauce Demo · Chromium</span>
   </header>
-  <section class="panel"><div class="ph"><h2>Test case runs today</h2></div>${runsTable(runs)}</section>
+  <section class="cards">
+    ${card('Test cases run today', String(total), '#555')}
+    ${card('Total execution time today', formatDuration(totalTime), '#555')}
+    ${card('Passed today', `${pct(counts.passed)}%`, COLORS.passed)}
+    ${card('Failed today', `${pct(counts.failed)}%`, COLORS.failed)}
+    ${card('Errors today', `${pct(counts.error)}%`, COLORS.error)}
+    ${card('Cancelled today', `${pct(counts.cancelled)}%`, COLORS.cancelled)}
+    ${card('Runs today', String(runs.length), '#6b4fbb')}
+  </section>
+  <section class="panel"><div class="ph"><h2>Test case outcomes by hour today</h2></div>${hourlyChart(runs)}${legend()}</section>
+  <section class="row">
+    <div class="panel half"><div class="ph"><h2>Today's test results by status</h2></div>${donut(counts, total)}${legend()}${statusTable(counts, pct)}</div>
+    <div class="panel half"><div class="ph"><h2>Today's longest running test cases</h2></div>${longestTable(all)}</div>
+  </section>
+  <section class="row">
+    <div class="panel half"><div class="ph"><h2>Today's test case failures</h2></div>${rankedTable(all, 'failed', 'Failures today', '!')}</div>
+    <div class="panel half"><div class="ph"><h2>Today's test case errors</h2></div>${rankedTable(all, 'error', 'Errors today', '▲')}</div>
+  </section>
+  <section class="panel"><div class="ph"><h2>Today's test runs and step screenshots</h2></div>${runsTable(runs)}</section>
 </main></body></html>`;
 }
 
@@ -209,36 +238,40 @@ function legend() {
   return `<div class="legend">${item(COLORS.passed, 'Pass')}${item(COLORS.failed, 'Fail')}${item(COLORS.error, 'Error')}${item(COLORS.cancelled, 'Cancelled')}</div>`;
 }
 
-function lineChart(runs: RunRecord[], start: Date) {
-  const days = Array.from({ length: DAYS }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return d;
-  });
-  const series: Record<Status, number[]> = { passed: [], failed: [], error: [], cancelled: [] };
-  for (const d of days) {
-    const tests = runs.filter((r) => dayKey(new Date(r.date)) === dayKey(d)).flatMap((r) => r.tests);
-    for (const s of Object.keys(series) as Status[]) series[s].push(tests.filter((t) => t.status === s).length);
+function hourlyChart(runs: RunRecord[]) {
+  const hours = Array.from({ length: 24 }, () => ({
+    passed: 0,
+    failed: 0,
+    error: 0,
+    cancelled: 0,
+  }));
+  for (const run of runs) {
+    const hour = new Date(run.date).getHours();
+    for (const test of run.tests) hours[hour][test.status]++;
   }
-  const max = Math.max(5, ...Object.values(series).flat());
-  const top = Math.ceil(max / 5) * 5;
+  const max = Math.max(1, ...hours.flatMap((hour) => Object.values(hour)));
+  const top = Math.ceil(max / 5) * 5 || 1;
   const W = 1000, H = 240, L = 40, R = 20, T = 15, B = 30;
-  const x = (i: number) => L + (i * (W - L - R)) / (DAYS - 1);
+  const x = (i: number) => L + (i * (W - L - R)) / 23;
   const y = (v: number) => T + (1 - v / top) * (H - T - B);
-
   const grid = [0, 1, 2, 3, 4, 5]
     .map((i) => {
-      const v = (top / 5) * i;
-      return `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#eee"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+      const value = (top / 5) * i;
+      return `<line x1="${L}" x2="${W - R}" y1="${y(value)}" y2="${y(value)}" stroke="#eee"/><text x="${L - 8}" y="${y(value) + 4}" text-anchor="end">${value}</text>`;
     })
     .join('');
-  const labels = days
-    .map((d, i) => `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${d.getDate()} ${d.toLocaleString('en', { month: 'short' })}</text>`)
-    .join('');
-  const lines = (Object.keys(series) as Status[])
+  const labels = Array.from({ length: 8 }, (_, i) => {
+    const hour = i * 3;
+    return `<text x="${x(hour)}" y="${H - 8}" text-anchor="middle">${String(hour).padStart(2, '0')}:00</text>`;
+  }).join('');
+  const lines = (['passed', 'failed', 'error', 'cancelled'] as const)
     .map((s) => {
-      const pts = series[s].map((v, i) => `${x(i)},${y(v)}`).join(' ');
-      const dots = series[s].map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="${COLORS[s]}"/>`).join('');
+      const pts = hours.map((hour, i) => `${x(i)},${y(hour[s])}`).join(' ');
+      const dots = hours
+        .map((hour, i) =>
+          hour[s] ? `<circle cx="${x(i)}" cy="${y(hour[s])}" r="3.5" fill="${COLORS[s]}"/>` : '',
+        )
+        .join('');
       return `<polyline points="${pts}" fill="none" stroke="${COLORS[s]}" stroke-width="2"/>${dots}`;
     })
     .join('');
