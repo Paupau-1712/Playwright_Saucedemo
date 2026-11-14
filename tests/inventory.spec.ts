@@ -8,7 +8,9 @@ test.describe('Inventory', () => {
   test.beforeEach(async ({ page }) => {
     const login = new LoginPage(page);
     await login.goto();
-    await login.login(users.standard, users.password);
+    await login.loginUsername(users.standard);
+    await login.loginPassword(users.password);
+    await login.clickLogin();
     inventory = new InventoryPage(page);
     await inventory.expectLoaded();
   });

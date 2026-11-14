@@ -24,9 +24,15 @@ export class LoginPage {
     await this.page.goto('/');
   }
 
-  async login(username: string, password: string) {
+  async loginUsername(username: string) {
     await this.username.fill(username);
+  }
+
+  async loginPassword(password: string) {
     await this.password.fill(password);
+  }
+
+  async clickLogin() {
     await this.loginButton.click();
   }
 

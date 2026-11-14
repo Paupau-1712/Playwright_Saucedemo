@@ -1,11 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { LoginPage, users } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
+import { CheckoutPage } from '../pages/CheckoutPage';
 
 test('completes a purchase end to end', async ({ page }) => {
   const login = new LoginPage(page);
   await login.goto();
-  await login.login(users.standard, users.password);
+  await login.loginUsername(users.standard);
+  await login.loginPassword(users.password);
+  await login.clickLogin();
 
   const inventory = new InventoryPage(page);
   await inventory.addToCart('Sauce Labs Backpack');
@@ -16,13 +19,12 @@ test('completes a purchase end to end', async ({ page }) => {
   ).toHaveText('Sauce Labs Backpack');
 
   await page.locator('[data-test="checkout"]').click();
-  await page.locator('[data-test="firstName"]').fill('Test');
-  await page.locator('[data-test="lastName"]').fill('User');
-  await page.locator('[data-test="postalCode"]').fill('12345');
-  await page.locator('[data-test="continue"]').click();
-  await page.locator('[data-test="finish"]').click();
+  const checkout = new CheckoutPage(page);
+  await checkout.firstName.fill('Test');
+  await checkout.lastName.fill('User');
+  await checkout.postalCode.fill('12345');
+  await checkout.continueButton.click();
+  await checkout.finishButton.click();
 
-  await expect(page.locator('[data-test="complete-header"]')).toHaveText(
-    'Thank you for your order!',
-  );
+  await expect(checkout.completeHeader).toHaveText('Thank you for your order!');
 });

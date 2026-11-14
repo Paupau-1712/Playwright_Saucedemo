@@ -6,21 +6,27 @@ test.describe('Login', () => {
   test('standard user can log in', async ({ page }) => {
     const login = new LoginPage(page);
     await login.goto();
-    await login.login(users.standard, users.password);
+    await login.loginUsername(users.standard);
+    await login.loginPassword(users.password);
+    await login.clickLogin();
     await new InventoryPage(page).expectLoaded();
   });
 
   test('locked out user is rejected', async ({ page }) => {
     const login = new LoginPage(page);
     await login.goto();
-    await login.login(users.locked, users.password);
+    await login.loginUsername(users.locked);
+    await login.loginPassword(users.password);
+    await login.clickLogin();
     await login.expectError('this user has been locked out');
   });
 
   test('wrong password shows an error', async ({ page }) => {
     const login = new LoginPage(page);
     await login.goto();
-    await login.login(users.standard, 'wrong_password');
+    await login.loginUsername(users.standard);
+    await login.loginPassword('wrong_password');
+    await login.clickLogin();
     await login.expectError('Username and password do not match');
   });
 
@@ -34,8 +40,8 @@ test.describe('Login', () => {
   test('empty password is required', async ({ page }) => {
     const login = new LoginPage(page);
     await login.goto();
-    await login.username.fill(users.standard);
-    await login.loginButton.click();
+    await login.loginUsername(users.standard);
+    await login.clickLogin();
     await login.expectError('Password is required');
   });
 });
