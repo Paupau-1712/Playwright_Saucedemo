@@ -37,6 +37,36 @@ jobs:
             -o dashboard/history.json || rm -f dashboard/history.json
       - name: Run Playwright tests
         run: npx playwright test
+      - name: Run Lighthouse performance test
+        run: |
+          CHROME_PATH="$(node -e "process.stdout.write(require('@playwright/test').chromium.executablePath())")"
+          npx --yes lighthouse https://www.saucedemo.com/ \
+            --chrome-path="$CHROME_PATH" \
+            --chrome-flags="--headless --no-sandbox" \
+            --only-categories=performance \
+            --output=json \
+            --output-path=./lighthouse-report.json
+          node <<'NODE'
+          const { readFileSync } = require('node:fs');
+          const report = JSON.parse(readFileSync('./lighthouse-report.json', 'utf8'));
+          const score = report.categories?.performance?.score;
+          const minimumScore = 0.8;
+
+          if (typeof score !== 'number') {
+            throw new Error('Lighthouse report did not contain a performance score.');
+          }
+
+          console.log(`Lighthouse performance score: ${Math.round(score * 100)}/100 (minimum ${minimumScore * 100})`);
+          if (score < minimumScore) {
+            process.exitCode = 1;
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: lighthouse-performance-report
+          path: lighthouse-report.json
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

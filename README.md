@@ -19,6 +19,21 @@ npm run report      # open the standard Playwright HTML report
 npm run dashboard   # open the dashboard report (macOS)
 ```
 
+The GitHub Actions workflow also runs a Lighthouse performance audit against
+the SauceDemo homepage. The build requires a performance score of at least 80,
+and uploads the JSON report as the `lighthouse-performance-report` artifact.
+This is a CI lab measurement, not continuous production monitoring.
+
+## Playwright MCP in VS Code
+
+The workspace-root `.mcp.json` configures Microsoft's Playwright MCP server for
+browser interaction from Copilot. Open this project folder in VS Code and start
+or trust the `playwright` MCP server when prompted. It requires Node.js 18 or
+newer and `npx`; the first start downloads `@playwright/mcp` through npm.
+
+MCP browser interactions are separate from `npm test` and do not run this
+project's Playwright test suite or generate its reports.
+
 ## Layout
 
 - `pages/` — page objects (`LoginPage`, `InventoryPage`)
