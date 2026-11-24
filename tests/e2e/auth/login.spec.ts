@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { LoginPage, users } from '../pages/LoginPage';
-import { InventoryPage } from '../pages/InventoryPage';
-import { captureStep } from '../utilities/screenShots/captureStep';
+import { LoginPage } from '../../../src/pages/login.page';
+import { InventoryPage } from '../../../src/pages/inventory.page';
+import { users } from '../../../src/fixtures/data.fixture';
+import { captureStep } from '../../../src/utils/capture-step';
 
 test.describe('Login', () => {
   test('standard user can log in', async ({ page }) => {
@@ -30,7 +31,9 @@ test.describe('Login', () => {
     const login = new LoginPage(page);
     await captureStep(page, 'Open the login page', () => login.goto());
     await captureStep(page, 'Enter the username', () => login.loginUsername(users.standard));
-    await captureStep(page, 'Enter an incorrect password', () => login.loginPassword('wrong_password'));
+    await captureStep(page, 'Enter an incorrect password', () =>
+      login.loginPassword(users.invalidPassword),
+    );
     await captureStep(page, 'Submit and verify the login error', async () => {
       await login.clickLogin();
       await login.expectError('Username and password do not match');

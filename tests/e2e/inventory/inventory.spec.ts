@@ -1,21 +1,12 @@
-import { test } from '@playwright/test';
-import { LoginPage, users } from '../pages/LoginPage';
-import { InventoryPage } from '../pages/InventoryPage';
-import { captureStep } from '../utilities/screenShots/captureStep';
+import { test } from '../../../src/fixtures';
+import { InventoryPage } from '../../../src/pages/inventory.page';
+import { captureStep } from '../../../src/utils/capture-step';
 
 test.describe('Inventory', () => {
   let inventory: InventoryPage;
 
-  test.beforeEach(async ({ page }) => {
-    const login = new LoginPage(page);
-    await captureStep(page, 'Open the login page', () => login.goto());
-    await captureStep(page, 'Enter the username', () => login.loginUsername(users.standard));
-    await captureStep(page, 'Enter the password', () => login.loginPassword(users.password));
-    await captureStep(page, 'Log in and verify the inventory page', async () => {
-      await login.clickLogin();
-      inventory = new InventoryPage(page);
-      await inventory.expectLoaded();
-    });
+  test.beforeEach(async ({ authenticatedPage }) => {
+    inventory = new InventoryPage(authenticatedPage);
   });
 
   test('lists six products', async ({ page }) => {

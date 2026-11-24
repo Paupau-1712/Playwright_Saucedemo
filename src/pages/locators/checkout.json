@@ -8,6 +8,7 @@
   "finishButton": "//*[@data-test='finish']",
   "items": "//*[@data-test='cart-list']//*[@data-test='inventory-item']",
   "cartItemName": "//*[@data-test='cart-list']//*[@data-test='inventory-item-name']",
+  "checkoutButton": "//*[@data-test='checkout']",
   "subtotal": "//*[@data-test='subtotal-label']",
   "tax": "//*[@data-test='tax-label']",
   "total": "//*[@data-test='total-label']",

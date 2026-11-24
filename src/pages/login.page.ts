@@ -1,22 +1,10 @@
-import { type Page, type Locator, expect } from '@playwright/test';
-import * as locators from './pagelocators/LoginPage.json';
+import { type Locator, expect } from '@playwright/test';
+import * as locators from './locators/login.json';
+import { BasePage } from './base.page';
 
-// Public demo credentials published on the Sauce Demo login page.
-export const users = {
-  standard: 'standard_user',
-  locked: 'locked_out_user',
-  password: 'secret_sauce',
-};
-
-export class LoginPage {
-  constructor(private readonly page: Page) {}
-
+export class LoginPage extends BasePage {
   private loc(name: keyof typeof locators): Locator {
     return this.page.locator(locators[name]);
-  }
-
-  async goto() {
-    await this.page.goto('/');
   }
 
   async loginUsername(username: string) {

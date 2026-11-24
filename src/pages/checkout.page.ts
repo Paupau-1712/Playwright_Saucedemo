@@ -1,11 +1,14 @@
-import { expect, type Locator, type Page } from '@playwright/test';
-import * as locators from './pagelocators/CheckoutPage.json';
+import { expect, type Locator } from '@playwright/test';
+import * as locators from './locators/checkout.json';
+import { BasePage } from './base.page';
 
-export class CheckoutPage {
-  constructor(private readonly page: Page) {}
-
+export class CheckoutPage extends BasePage {
   private loc(name: keyof typeof locators): Locator {
     return this.page.locator(locators[name]);
+  }
+
+  async startCheckout(): Promise<void> {
+    await this.loc('checkoutButton').click();
   }
 
   async expectCartItem(productName: string): Promise<void> {
